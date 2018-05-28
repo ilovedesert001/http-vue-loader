@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <script src="../libs/vue.js"></script>
+    <script src="../src/httpVueLoader.js"></script>
+
+    <script type="text/vue" src="tag1.vue"></script>
+    <script type="text/vue" src="tags.vue"></script>
+
+    <script>
+        httpVueLoader.init().then(function () {
+            console.log("开始");
+            var app = new Vue({
+                el: '#app',
+                data: {
+                    message: 'Hello Vue!'
+                }
+            })
+        });
+    </script>
+
+</head>
+<body>
+
+<div id="app">
+    {{ message }}
+
+    <tag1></tag1>
+
+    <hello1></hello1>
+    <br>
+    <hello2></hello2>
+
+</div>
+
+</body>
+</html>

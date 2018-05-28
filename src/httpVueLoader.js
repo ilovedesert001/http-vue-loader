@@ -241,8 +241,17 @@
 
 		load: function(componentURL) {
 
-			return httpVueLoader.httpRequest(componentURL)
-			.then(function(responseText) {
+			var reqPromise = httpVueLoader.httpRequest;
+			if(typeof componentURL === 'object'){
+                reqPromise = function () {
+					return	new Promise(function (y, n) {
+                        var content = componentURL.content;
+                        componentURL = componentURL.script.src;
+                        y(content);
+                    });
+                }
+			}
+			return reqPromise(componentURL).then(function(responseText) {
 
 				this.baseURI = componentURL.substr(0, componentURL.lastIndexOf('/')+1);
 				var doc = document.implementation.createHTMLDocument('');
@@ -388,7 +397,6 @@
 						exports.name = component.name;
 
 				exports._baseURI = component.baseURI;
-
 				return exports;
 			});
 		};
@@ -444,7 +452,7 @@
 				if ( xhr.readyState === 4 ) {
 
 					if ( xhr.status >= 200 && xhr.status < 300 )
-						resolve(xhr.responseText);
+						resolve(xhr.responseText,);
 					else
 						reject(xhr.status);
 				}
@@ -461,10 +469,89 @@
 	};
 
 	function httpVueLoader(url, name) {
-
 		var comp = parseComponentURL(url);
 		return httpVueLoader.load(comp.url, name);
 	}
+
+    function httpVueLoaderByText(opts) {
+		var name = opts.name || parseComponentURL(opts.script.src).name;
+        Vue.component(name,httpVueLoader.load({
+            content:opts.content,
+            script:opts.script,
+        }));
+    }
+
+    var bus = new Vue();
+	httpVueLoader.opts = {
+        scriptType:'text/vue',
+	};
+
+	//编译所有script 里面的 组件，
+    httpVueLoader.init = function(){
+    	var win = window;
+    	var doc = win.document;
+    	var lib = httpVueLoader;
+
+        var div = doc.createElement('div');
+
+    	var myReq = function(url,opts){
+            return new Promise(function(y, n) {
+                lib.httpRequest(url).then(function (res) {
+					y({
+						res:res,
+						opts:opts,
+					})
+                },n)
+					.catch(n)
+            });
+		};
+
+        win.addEventListener('load',function () {
+            var allScript = doc.querySelectorAll('[type="'+lib.opts.scriptType+'"]');
+            var gets = [],i,len;
+            for ( i = 0,len = allScript.length; i < len; i++) {
+                var script = allScript[i];
+                gets.push(myReq(script.src,{
+                	index:i,
+                    script:script,
+				}))
+            }
+            Promise.all(gets).then(function (results) {
+                results.forEach(function (res) {
+                    console.log(res);
+                    var text = res.res;
+                    div.innerHTML = text;
+                    var tags = Array.from(div.querySelectorAll('tag'));
+                    window.xx = tags;
+                    if(tags.length ===0){
+                        tags.push(div);
+                    }
+                    tags.forEach(function (tag) {
+                        httpVueLoaderByText({
+							name:tag.getAttribute('name'),
+							content:tag.innerHTML,
+							script:res.opts.script,
+                        });
+					});
+                });
+                bus.$emit('onReady');
+            })
+
+        });
+
+
+        return new Promise(function (y, n) {
+            if(httpVueLoader.ready){
+                y();
+            }
+            else {
+                bus.$on('onReady',function () {
+                    y();
+                })
+            }
+        })
+    };
+
 
 	return httpVueLoader;
 });

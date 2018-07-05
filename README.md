@@ -1,6 +1,8 @@
 # http-vue-loader
 Load .vue files directly from your html/js. No node.js environment, no build step.
 
+测试提交d
+
 ## examples
 
 `my-component.vue`
